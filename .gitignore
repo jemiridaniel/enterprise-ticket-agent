@@ -1,0 +1,94 @@
+# ============================
+# GLOBAL / MACHINE-SPECIFIC
+# ============================
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# macOS
+*.icloud
+
+# Logs
+logs/
+*.log
+
+# ============================
+# PYTHON BACKEND
+# ============================
+backend/__pycache__/
+backend/**/*.pyc
+backend/**/*.pyo
+backend/.pytest_cache/
+backend/.mypy_cache/
+backend/.ruff_cache/
+backend/.cache/
+
+# Virtual environments
+backend/venv/
+backend/.venv/
+.venv/
+venv/
+
+# Python compiled extensions
+*.so
+
+# Envs + Secrets (VERY IMPORTANT)
+.env
+.env.*
+backend/.env
+backend/.env.*
+
+# Model artifacts
+backend/models/
+backend/**/models/*.bin
+backend/**/models/*.pt
+
+# Chroma / Vector DB local storage
+backend/chroma/
+backend/chroma_db/
+backend/vector_store/
+chroma/
+chroma_db/
+
+# uvicorn reload pid temp files
+*.pid
+
+# ============================
+# NODE / REACT FRONTEND
+# ============================
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+frontend/.cache/
+frontend/.vite/
+
+# Vite / React temp
+.vite/
+.vite_deps/
+
+# React dev artifacts
+*.tsbuildinfo
+
+# ============================
+# EDITOR / TOOLS
+# ============================
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# ============================
+# DOCKER (OPTIONAL)
+# ============================
+docker-data/
+*.tar
+
+# ============================
+# LOCAL TEST FILES
+# ============================
+tmp/
+test-output/
+scratch/
+scratchpad/
+sandbox/
