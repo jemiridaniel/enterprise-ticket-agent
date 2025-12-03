@@ -1,0 +1,32 @@
+version: "3.9"
+
+services:
+  chromadb:
+    image: chromadb/chroma:latest
+    container_name: chroma
+    volumes:
+      - ./chroma:/data
+    ports:
+      - "8001:8000"
+
+  backend:
+    build: ./backend
+    container_name: ticket-backend
+    environment:
+      - CHROMA_URL=http://chroma:8000
+      - LLM_API_KEY=${LLM_API_KEY}
+      - LLM_API_BASE=${LLM_API_BASE}
+    volumes:
+      - ./backend:/app
+    ports:
+      - "8000:8000"
+    depends_on:
+      - chromadb
+
+  frontend:
+    build: ./frontend
+    container_name: ticket-frontend
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
