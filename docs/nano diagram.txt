@@ -1,0 +1,32 @@
+                   ┌────────────────────────────────────────┐
+                   │            React Frontend              │
+                   │      (Vite + TypeScript + UI)          │
+                   └───────────────┬────────────────────────┘
+                                   │ REST API Calls (JSON)
+                                   ▼
+           ┌────────────────────────────────────────────────────────┐
+           │                     FastAPI Backend                    │
+           │  app/                                                  │
+           │  ├── routes/   → /tickets, /followup, /thread          │
+           │  ├── services/ → agent_orchestrator, vector_service    │
+           │  ├── llm/      → llama-3.1-8b inference wrapper        │
+           │  └── models/   → Ticket models, Thread models          │
+           └───────────────┬────────────────────────────────────────┘
+                           │
+                           │ Embedding search / Upsert / Query
+                           ▼
+           ┌────────────────────────────────────────────────────────┐
+           │                        ChromaDB                        │
+           │        (Vector Store: tickets + messages embeddings)   │
+           └────────────────────────────────────────────────────────┘
+
+                           │
+                           │ LLM calls (prompt → response)
+                           ▼
+           ┌────────────────────────────────────────────────────────┐
+           │                Llama-3.1-8B Inference API              │
+           │  - Generates troubleshooting steps                     │
+           │  - Generates follow-up questions                       │
+           │  - Generates structured agent responses                │
+           └────────────────────────────────────────────────────────┘
+
