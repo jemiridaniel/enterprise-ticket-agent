@@ -1,10 +1,5 @@
-// src/components/TicketDetail.tsx
 import React from "react";
-import type {
-  TicketThreadResponse,
-  SuggestedAction,
-  FollowupQuestion,
-} from "../api";
+import type { TicketThreadResponse } from "../api";
 
 interface TicketDetailProps {
   thread: TicketThreadResponse | null;
@@ -31,19 +26,17 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({
     setFollowupText("");
   };
 
-  const safeMessages = thread.thread || [];
+  const safeMessages = thread.thread || thread.messages || [];
 
   return (
     <div className="flex flex-col h-full border-l border-gray-200">
       {/* Header */}
-      <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-        <div>
-          <h2 className="text-base font-semibold">{thread.subject}</h2>
-          <p className="text-xs text-gray-500">
-            Ticket #{thread.ticket_id.slice(0, 8)} • Severity:{" "}
-            <span className="font-medium">{thread.severity}</span>
-          </p>
-        </div>
+      <div className="px-4 py-3 border-b border-gray-200">
+        <h2 className="text-base font-semibold">{thread.subject}</h2>
+        <p className="text-xs text-gray-500">
+          Ticket #{thread.ticket_id.slice(0, 8)} • Severity:{" "}
+          <span className="font-medium">{thread.severity}</span>
+        </p>
       </div>
 
       {/* Conversation */}
@@ -57,26 +50,26 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({
                 : "bg-blue-600 text-white ml-auto"
             }`}
           >
-            <div className="text-[10px] mb-1 opacity-70">
+            <div className="text-[10px] opacity-60 mb-1">
               {m.role === "agent" ? "Agent" : "User"}
             </div>
             <div className="whitespace-pre-wrap">{m.content}</div>
             <div className="text-[9px] opacity-40 mt-1">
-              {new Date(m.timestamp).toLocaleString()}
+              {new Date(m.created_at).toLocaleString()}
             </div>
           </div>
         ))}
       </div>
 
-      {/* Follow-up Questions */}
-      {thread.followup_questions?.length > 0 && (
-        <div className="px-4 py-3 border-t border-gray-200 bg-white">
+      {/* Questions for the User */}
+      {thread.questions_for_user?.length > 0 && (
+        <div className="px-4 py-3 border-t bg-white">
           <h3 className="text-xs font-semibold text-gray-700 mb-1">
-            Follow-up Questions
+            Questions for the user
           </h3>
           <ul className="list-disc list-inside text-xs text-gray-700 space-y-1">
-            {thread.followup_questions.map((q, idx) => (
-              <li key={idx}>{q.text}</li>
+            {thread.questions_for_user.map((q, idx) => (
+              <li key={idx}>{q}</li>
             ))}
           </ul>
         </div>
@@ -84,25 +77,20 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({
 
       {/* Suggested Actions */}
       {thread.suggested_actions?.length > 0 && (
-        <div className="px-4 py-3 border-t border-gray-200 bg-white">
+        <div className="px-4 py-3 border-t bg-white">
           <h3 className="text-xs font-semibold text-gray-700 mb-1">
             Suggested Actions
           </h3>
-          {thread.suggested_actions.map((sa, idx) => (
-            <div key={idx} className="mb-2">
-              <strong className="text-xs">{sa.title}</strong>
-              <ul className="list-disc list-inside text-xs ml-3 text-gray-700 space-y-1">
-                {sa.steps.map((step, sIdx) => (
-                  <li key={sIdx}>{step}</li>
-                ))}
-              </ul>
-            </div>
-          ))}
+          <ul className="list-disc list-inside text-xs text-gray-700 space-y-1">
+            {thread.suggested_actions.map((step, idx) => (
+              <li key={idx}>{step}</li>
+            ))}
+          </ul>
         </div>
       )}
 
       {/* Follow-up Input */}
-      <div className="px-4 py-3 border-t border-gray-200 bg-white">
+      <div className="px-4 py-3 border-t bg-white">
         <label className="block text-xs font-medium text-gray-700 mb-1">
           Add follow-up message
         </label>
@@ -118,7 +106,7 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({
             disabled={!followupText.trim()}
             className="px-3 py-1.5 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
           >
-            Send follow-up
+            Send Follow-up
           </button>
         </div>
       </div>

@@ -18,27 +18,24 @@ def _now_iso() -> str:
 class VectorStore:
     """
     Thin wrapper around a ChromaDB collection for tickets + messages.
-
-    We store:
-      - kind: "ticket" or "message"
-      - ticket_id: logical ticket id (e.g. TCK-XXXX)
-      - subject, severity, status, created_at (for ticket roots)
-      - role, created_at (for messages)
-      - document text: description / message content
     """
 
     def __init__(self) -> None:
+        print(">>> INITIALIZING VECTORSTORE")
+
         client = chromadb.PersistentClient(path=settings.VECTOR_DB_DIR)
+        print(">>> CLIENT CREATED")
 
-        # Use a lightweight sentence-transformer embedding
-        embed_fn = embedding_functions.SentenceTransformerEmbeddingFunction(
-            model_name="all-MiniLM-L6-v2"
-        )
+        print(">>> LOADING EMBEDDING FN")
+        embed_fn = embedding_functions.DefaultEmbeddingFunction()
+        print(">>> EMBEDDING FN LOADED")
 
+        print(">>> CREATING COLLECTION")
         self.collection = client.get_or_create_collection(
             name="tickets",
             embedding_function=embed_fn,
         )
+        print(">>> COLLECTION READY")
 
     # ---------- Ticket root docs ----------
 
@@ -52,14 +49,11 @@ class VectorStore:
         status: str = "open",
         created_at: Optional[str] = None,
     ) -> None:
-        """
-        Store the main ticket record as a single vector doc.
-        The id of this doc = ticket_id.
-        """
+
         if created_at is None:
             created_at = _now_iso()
 
-        metadata: Dict[str, Any] = {
+        metadata = {
             "kind": "ticket",
             "ticket_id": ticket_id,
             "subject": subject,
@@ -84,16 +78,13 @@ class VectorStore:
         content: str,
         created_at: Optional[str] = None,
     ) -> str:
-        """
-        Append a message in the conversation thread for a ticket.
-        Stored as a separate doc with kind="message".
-        """
+
         if created_at is None:
             created_at = _now_iso()
 
         msg_id = f"{ticket_id}-msg-{uuid4().hex[:8]}"
 
-        metadata: Dict[str, Any] = {
+        metadata = {
             "kind": "message",
             "ticket_id": ticket_id,
             "role": role,
@@ -111,50 +102,42 @@ class VectorStore:
     # ---------- Similar incidents ----------
 
     def query_similar(self, query: str, k: int = 5) -> List[Dict[str, Any]]:
-        """
-        Find similar ticket roots (kind="ticket") for a given text.
-        Returns a list of dicts with ticket_id, subject, description, similarity_score.
-        """
+
         res = self.collection.query(
             query_texts=[query],
             n_results=k,
-            where={"kind": "ticket"},  # <-- single operator
+            where={"kind": "ticket"},
             include=["documents", "metadatas", "distances"],
         )
 
-        docs_list = res.get("documents", [[]])[0] if res.get("documents") else []
-        metas_list = res.get("metadatas", [[]])[0] if res.get("metadatas") else []
-        dists_list = res.get("distances", [[]])[0] if res.get("distances") else []
+        docs = res.get("documents", [[]])[0]
+        metas = res.get("metadatas", [[]])[0]
+        dists = res.get("distances", [[]])[0]
 
-        similar: List[Dict[str, Any]] = []
-        for meta, doc, dist in zip(metas_list, docs_list, dists_list):
+        similar = []
+        for meta, doc, dist in zip(metas, docs, dists):
             similar.append(
                 {
                     "ticket_id": meta.get("ticket_id"),
                     "subject": meta.get("subject", ""),
                     "description": doc,
-                    # Convert distance to a "similarity" feel (1 - dist)
-                    "similarity_score": float(1.0 - dist) if dist is not None else None,
+                    "similarity_score": float(1 - dist) if dist is not None else None,
                 }
             )
 
         return similar
 
-    # ---------- History list ----------
+    # ---------- History ----------
 
     def list_tickets(self, limit: int = 50) -> List[Dict[str, Any]]:
-        """
-        Return lightweight ticket items for the history sidebar.
-        """
+
         res = self.collection.get(
-            where={"kind": "ticket"},  # valid where – one operator
+            where={"kind": "ticket"},
             include=["metadatas"],
         )
 
-        metadatas = res.get("metadatas", []) or []
-
-        items: List[Dict[str, Any]] = []
-        for meta in metadatas:
+        items = []
+        for meta in res.get("metadatas", []):
             items.append(
                 {
                     "ticket_id": meta.get("ticket_id"),
@@ -165,79 +148,66 @@ class VectorStore:
                 }
             )
 
-        # Sort newest first
-        items.sort(key=lambda x: x.get("created_at") or "", reverse=True)
+        items.sort(key=lambda x: x["created_at"], reverse=True)
         return items[:limit]
 
-    # ---------- Ticket + messages ----------
+    # ---------- Ticket + Messages ----------
 
     def get_ticket_and_messages(self, ticket_id: str) -> Dict[str, Any]:
-        """
-        Pull the ticket root + all messages for a ticket_id in one shot.
-        Fixes: we only use where={"ticket_id": ticket_id} to avoid
-        the 'Expected where to have exactly one operator' chroma error.
-        """
+
         res = self.collection.get(
-            where={"ticket_id": ticket_id},  # <-- single key, no chroma error
+            where={"ticket_id": ticket_id},
             include=["documents", "metadatas"],
         )
 
-        metadatas = res.get("metadatas", []) or []
-        documents = res.get("documents", []) or []
+        metadatas = res.get("metadatas", [])
+        documents = res.get("documents", [])
 
-        ticket_meta: Optional[Dict[str, Any]] = None
-        messages: List[Dict[str, Any]] = []
+        ticket_meta = None
+        messages = []
 
         for meta, doc in zip(metadatas, documents):
-            kind = meta.get("kind")
-
-            if kind == "ticket" and ticket_meta is None:
-                # root ticket
+            if meta.get("kind") == "ticket":
                 ticket_meta = dict(meta)
                 ticket_meta["description"] = doc
-            elif kind == "message":
+            else:
                 messages.append(
                     {
-                        "role": meta.get("role", "user"),
+                        "role": meta.get("role"),
                         "content": doc,
-                        "created_at": meta.get("created_at", _now_iso()),
+                        "created_at": meta.get("created_at"),
                     }
                 )
 
-        # sort messages by created_at
-        messages.sort(key=lambda m: m.get("created_at") or "")
+        messages.sort(key=lambda m: m["created_at"])
 
-        return {
-            "ticket": ticket_meta,
-            "messages": messages,
-        }
+        return {"ticket": ticket_meta, "messages": messages}
 
     # ---------- Close ticket ----------
 
-    def close_ticket(self, ticket_id: str) -> None:
-        """
-        Mark a ticket as closed in its root metadata.
-        """
+    def close_ticket(self, ticket_id: str):
+
         res = self.collection.get(
-            where={"ticket_id": ticket_id},  # again: single operator
+            where={"ticket_id": ticket_id},
             include=["metadatas"],
         )
 
-        ids = res.get("ids", []) or []
-        metadatas = res.get("metadatas", []) or []
+        ids = res.get("ids", [])
+        metas = res.get("metadatas", [])
 
-        for _id, meta in zip(ids, metadatas):
+        for _id, meta in zip(ids, metas):
             if meta.get("kind") == "ticket":
-                meta = dict(meta)
-                meta["status"] = "closed"
+                new_meta = dict(meta)
+                new_meta["status"] = "closed"
+
                 self.collection.update(
                     ids=[_id],
-                    metadatas=[meta],
+                    metadatas=[new_meta],
                 )
                 return
 
         raise ValueError(f"Ticket {ticket_id} not found")
 
 
-# Singleton used across the app
+# Singleton instance
 vector_store = VectorStore()

@@ -2,16 +2,7 @@ export interface ThreadMessage {
   id: string;
   role: "user" | "agent";
   content: string;
-  timestamp: string;
-}
-
-export interface SuggestedAction {
-  title: string;
-  steps: string[];
-}
-
-export interface FollowupQuestion {
-  text: string;
+  created_at: string;   // backend uses created_at, NOT timestamp
 }
 
 export interface SimilarIncident {
@@ -29,11 +20,13 @@ export interface TicketThreadResponse {
   user_upn?: string | null;
   created_at: string;
 
-  /** PRIMARY FIELDS FROM BACKEND */
+  /** Messages from backend */
   thread: ThreadMessage[];
+  messages?: ThreadMessage[];
 
-  /** Secondary optional fields */
-  suggested_actions: SuggestedAction[];
-  followup_questions: FollowupQuestion[];
+  /** Arrays of strings, NOT objects */
+  suggested_actions: string[];
+  questions_for_user: string[];
+
   similar_incidents: SimilarIncident[];
 }

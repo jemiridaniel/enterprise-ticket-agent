@@ -3,8 +3,6 @@ from datetime import datetime
 from pydantic import BaseModel, Field
 
 
-# ---------- Core structures ----------
-
 class SuggestedAction(BaseModel):
     title: str
     steps: List[str]
@@ -24,49 +22,41 @@ class SimilarIncident(BaseModel):
 class TicketMessage(BaseModel):
     role: Literal["user", "agent"]
     content: str
-    # Accept either a datetime or string – frontend will handle formatting
     timestamp: datetime | str
 
 
-# ---------- Request models ----------
+# -------- Request --------
 
 class TicketCreateRequest(BaseModel):
     subject: str
     description: str
-    user_upn: str = Field(..., description="User's UPN or email")
+    user_upn: Optional[str] = None
     severity: Literal["low", "medium", "high", "critical"] = "medium"
 
 
 class FollowupRequest(BaseModel):
-    message: str = Field(..., description="User follow-up message text")
+    message: str
 
 
-# ---------- Response / view models ----------
+# -------- Response Models --------
 
 class TicketResponse(BaseModel):
-    """
-    Returned immediately when a new ticket is created.
-    Contains the first AI answer + structured actions + questions + thread.
-    """
     ticket_id: str
     subject: str
     description: str
-    user_upn: str
+    user_upn: Optional[str]
     severity: str
     status: Literal["open", "closed"] = "open"
 
     answer: str
     suggested_actions: List[SuggestedAction]
     followup_questions: List[FollowupQuestion]
-    similar_incidents: List[SimilarIncident] = []
+    similar_incidents: List[SimilarIncident]
 
     thread: List[TicketMessage]
 
 
 class TicketHistoryItem(BaseModel):
-    """
-    Lightweight item for the left-hand 'Ticket History' list.
-    """
     ticket_id: str
     subject: str
     severity: str
@@ -75,10 +65,6 @@ class TicketHistoryItem(BaseModel):
 
 
 class TicketThreadResponse(BaseModel):
-    """
-    Full thread view for a single ticket.
-    Used when loading /tickets/{id}/thread and when posting follow-ups.
-    """
     ticket_id: str
     subject: str
     description: str
@@ -88,6 +74,6 @@ class TicketThreadResponse(BaseModel):
     answer: str
     suggested_actions: List[SuggestedAction]
     followup_questions: List[FollowupQuestion]
+    similar_incidents: List[SimilarIncident]
 
     thread: List[TicketMessage]
-    similar_incidents: List[SimilarIncident] = []
