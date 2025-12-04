@@ -4,29 +4,38 @@ services:
   chromadb:
     image: chromadb/chroma:latest
     container_name: chroma
+    restart: always
     volumes:
       - ./chroma:/data
     ports:
-      - "8001:8000"
+      - "8001:8000"   # external → internal
+    environment:
+      - IS_PERSISTENT=TRUE
 
   backend:
     build: ./backend
     container_name: ticket-backend
+    restart: always
     environment:
+      # Chroma inside Docker uses the service name
       - CHROMA_URL=http://chroma:8000
       - LLM_API_KEY=${LLM_API_KEY}
       - LLM_API_BASE=${LLM_API_BASE}
+
     volumes:
       - ./backend:/app
+
     ports:
       - "8000:8000"
+
     depends_on:
       - chromadb
 
   frontend:
     build: ./frontend
     container_name: ticket-frontend
+    restart: always
     ports:
-      - "5173:80"
+      - "5173:80"   # Vite build served by nginx
     depends_on:
       - backend
